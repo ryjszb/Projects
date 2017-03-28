@@ -1,0 +1,8 @@
+To let the student in MSSP program learn through collaborative statistical work
+on real problems, practicum course provides our group with a project sponsored
+by partners in the City of Boston. We have data comes from the 911 dispatch
+system, which covers police, fire, and EMS and potential dataset which connects
+individuals in need of shelter with space in facilities. To understand how we
+provide shelters to homeless people and identify potential improvements, we
+cleaned, analyzed, and visualized the datasets and made a shiny app to display
+to the representatives from the City of Boston.
