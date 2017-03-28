@@ -1,0 +1,48 @@
+---
+title: "Quick Analysis"
+author: "Andy Barton"
+date: "October 26, 2016"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+library(doBy)
+```
+
+
+```{r}
+setwd("C:/Users/barto/Dropbox/2_Evan_butterfly_project/Butterfly Writeup/Jun_view")
+butterfly_data <- read.csv("for_R_sheet.csv")
+```
+
+butterfly_data is the counts of attacks (in theory up to 20) for each butterfly for each site. Site is the site number, Attacked are these counts, and Treatment is the butterfly type, the fourth column has no clear meaning.
+
+```{r}
+cat("Maximum Attacks: ", max(butterfly_data$Attacked))
+cat("Total Attacks: ", sum(butterfly_data$Attacked))
+
+all.attacks.site <- summaryBy(Attacked~Site, data = butterfly_data, FUN = sum)
+all.attacks.site <- all.attacks.site[all.attacks.site$Attacked.sum != 0,]
+cat("Number of sites with attacks: ", nrow(all.attacks.site))
+cat("Maximum Attacks at a site: ", max(all.attacks.site$Attacked.sum))
+cat("Number of sites with exactly 1 attack: ", sum(all.attacks.site$Attacked.sum == 1))
+cat("Number of sites with exactly 2 attacks: ", sum(all.attacks.site$Attacked.sum == 2))
+cat("Number of sites with exactly 3 attacks: ", sum(all.attacks.site$Attacked.sum == 3))
+```
+
+The data frame all.attacks.site contains all sites with attacks, having their sum of total attacks.
+
+```{r}
+sites.inds <- c(all.attacks.site$Site, all.attacks.site$Site +100,
+                    all.attacks.site$Site+200, all.attacks.site$Site+300)
+all.attacks.types <- butterfly_data[sites.inds,]
+cat("Should be 33: ", sum(all.attacks.types$Attacked))
+rm(sites.inds)
+```
+
+Now we have 3 data frames:    
+butterfly_data - counts of attacks on each type at all sites    
+all.attacks.site - counts of total attacks at the 25 sites that had attacks   
+all.attacks.type - counts of attacks on each type at the 25 sites that had attacks
+

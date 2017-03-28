@@ -1,0 +1,53 @@
+---
+title: "Testing Logistic"
+author: "Andy Barton"
+date: "September 25, 2016"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+library(knitr)
+```
+
+
+
+```{r}
+setwd("C:/Users/barto/Documents/675/Consulting")
+mydata <- read.csv("California_2016_Model_data.csv", header = TRUE)
+
+mydata$model_1 <- as.numeric(c(mydata$Model == "A. californica"))
+mydata$model_2 <- as.numeric(c(mydata$Model == "L. lorquini"))
+mydata$model_3 <- as.numeric(c(mydata$Model == "L. weidemeyerii"))
+mydata$model_4 <- as.numeric(c(mydata$Model == "J. coenia"))
+
+logit_1_output <- glm(Attack ~ model_1 + model_2 + model_3, data = mydata, family = "binomial")
+kable(summary(logit_1_output)$coef, digits = 3)
+
+logit_2_output <- glm(Attack ~ model_2 + model_3 + model_4, data = mydata, family = "binomial")
+kable(summary(logit_2_output)$coef, digits = 3)
+
+logit_3_output <- glm(Attack ~ model_1 + model_3 + model_4, data = mydata, family = "binomial")
+kable(summary(logit_3_output)$coef, digits = 3)
+```
+
+###P-values for 
+
+Difference between 1 and 2    
+p = 0.529   
+Difference between 1 and 3    
+p = 0.083    
+Difference between 1 and 4    
+p = 0.039   
+
+Difference between 2 and 3    
+p = 0.231   
+Difference between 2 and 4    
+p = 0.116   
+
+Difference between 3 and 4    
+p = 0.683
+
+##What do you think?
+As we discussed, this model makes less sense conceptually than the poisson regression. Here we see that less of these differences are statistically significant at the $\alpha$ = 0.05 level, so there is really no reason to use the model.
+

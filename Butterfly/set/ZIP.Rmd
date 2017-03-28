@@ -1,0 +1,149 @@
+---
+title: "Zero Inflated Poisson"
+author: "Andy Barton"
+date: "October 27, 2016"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+library(knitr)
+library(pscl)
+library(multcomp)
+```
+
+
+```{r}
+#setwd("C:/Users/barto/Documents/675/Consulting")
+#california <- read.csv("for_R_sheet.csv")
+#setwd("C:/Users/barto/Dropbox/2_Evan_butterfly_project")
+#idaho <- read.csv("idaho_for_R.csv")
+
+setwd("C:/Users/a1adb02/Documents/MSSP/675/Consulting")
+load("ZIP.RData")
+```
+
+## Issues with Zero Inflated Poisson Analysis
+
+The standard poisson model assumes an underlying continuous rate of occurances for the events it is modeling, however sometimes there are also discrete aspects to the underlying rate. If these discrete aspects cause the rate to be zero, then you can adjust to this issue by using a zero inflated poisson regression. To illustrate this point, I will use the example from a study of cockroach infestation in city appartments. Each appartment was set up with traps for several days and they counted the amount of cockroaches trapped. Here, we expect there to be a continuous rate of cockroaches caught *in appartments that have cockroaches*. We also expect a significant subset of these appartments to have no cockroaches since there are none in the building. The zero inflated model then predicts a probability that the apartment building will have any cockroaches at all, then models the counts of cockroaches in appartments who's buildings are expected to have cockroaches using a poisson model that assumes a continuous rate of cockroach attacks (Gelman and Hill). 
+
+This example illustrates the idea that there needs to be a reason that this subset of observations are all zeros. Ideally when implementing the model, you include explanatory variables for both the poisson modeling and the logistic modeling of whether each observation is in the subset of all zeros. For this project, we do not see any explanation of why some butterflies would be in this subset of zeros and others would be following a poisson distribution. 
+
+## Zero Inflated Poisson Analysis
+
+```{r}
+california$A <- ifelse(california$Treatment == "A", 1, 0)
+california$L <- ifelse(california$Treatment == "L", 1, 0)
+california$W <- ifelse(california$Treatment == "W", 1, 0)
+california$J <- ifelse(california$Treatment == "J", 1, 0)
+
+
+c.zip.j <- zeroinfl(Attacked~A+L+W | 1, data = california, dist = c("poisson"), link = c("logit"))
+summary(c.zip.j)
+
+c.zip.w <- zeroinfl(Attacked~A+L+J | 1, data = california, dist = c("poisson"), link = c("logit"))
+summary(c.zip.w)
+
+c.zip.l <- zeroinfl(Attacked~A+W+J | 1, data = california, dist = c("poisson"), link = c("logit"))
+summary(c.zip.l)
+```
+```{r, echo = FALSE}
+cal.out.df <- data.frame("Attack Comparison" = c("A over J", "A over W", "A over L", "L over J", 
+                                       "L over W", "W over J"),
+                         "Coefficients" = c(c.zip.j$coefficients$count[2],
+                                            c.zip.w$coefficients$count[2],
+                                            c.zip.l$coefficients$count[2],
+                                            c.zip.j$coefficients$count[3],
+                                            c.zip.w$coefficients$count[3],
+                                            c.zip.j$coefficients$count[4]),
+                         "Standard Error" = c(summary(c.zip.j)$coef$count[2,2],
+                                    summary(c.zip.w)$coef$count[2,2],
+                                    summary(c.zip.l)$coef$count[2,2],
+                                    summary(c.zip.j)$coef$count[3,2],
+                                    summary(c.zip.w)$coef$count[3,2],
+                                    summary(c.zip.j)$coef$count[4,2]),
+                         "P Values" = c(summary(c.zip.j)$coef$count[2,4],
+                                    summary(c.zip.w)$coef$count[2,4],
+                                    summary(c.zip.l)$coef$count[2,4],
+                                    summary(c.zip.j)$coef$count[3,4],
+                                    summary(c.zip.w)$coef$count[3,4],
+                                    summary(c.zip.j)$coef$count[4,4]))
+kable(cal.out.df)
+```
+
+In California:      
+1.  There is a statistically significant difference between A. Californica and J. Coenia, but no statistically significant difference between A Californica and L. Weidemeyerii.     
+2.  There is no statistically significant difference between L. Lorquini and either of the control butterflies     
+3.  There is no statistically significant difference between the two controls     
+
+
+```{r}
+idaho$A <- ifelse(idaho$Treatment == "A", 1, 0)
+idaho$L <- ifelse(idaho$Treatment == "L", 1, 0)
+idaho$W <- ifelse(idaho$Treatment == "W", 1, 0)
+idaho$J <- ifelse(idaho$Treatment == "J", 1, 0)
+
+i.zip.j <- zeroinfl(Attacked~A+L+W | 1, data = idaho, dist = c("poisson"), link = c("logit"))
+summary(i.zip.j)
+
+i.zip.w <- zeroinfl(Attacked~A+L+J | 1, data = idaho, dist = c("poisson"), link = c("logit"))
+summary(i.zip.w)
+
+i.zip.l <- zeroinfl(Attacked~A+W+J | 1, data = idaho, dist = c("poisson"), link = c("logit"))
+summary(i.zip.l)
+```
+```{r, echo = FALSE}
+ida.out.df <- data.frame("Attack Comparison" = c("A over J", "A over W", "A over L", "L over J", 
+                                       "L over W", "W over J"),
+                         "Coefficients" = c(i.zip.j$coefficients$count[2],
+                                            i.zip.w$coefficients$count[2],
+                                            i.zip.l$coefficients$count[2],
+                                            i.zip.j$coefficients$count[3],
+                                            i.zip.w$coefficients$count[3],
+                                            i.zip.j$coefficients$count[4]),
+                         "Standard Error" = c(summary(i.zip.j)$coef$count[2,2],
+                                    summary(i.zip.w)$coef$count[2,2],
+                                    summary(i.zip.l)$coef$count[2,2],
+                                    summary(i.zip.j)$coef$count[3,2],
+                                    summary(i.zip.w)$coef$count[3,2],
+                                    summary(i.zip.j)$coef$count[4,2]),
+                         "P Values" = c(summary(c.zip.j)$coef$count[2,4],
+                                    summary(i.zip.w)$coef$count[2,4],
+                                    summary(i.zip.l)$coef$count[2,4],
+                                    summary(i.zip.j)$coef$count[3,4],
+                                    summary(i.zip.w)$coef$count[3,4],
+                                    summary(i.zip.j)$coef$count[4,4]))
+kable(ida.out.df)
+```
+
+In Idaho:     
+1.  There is a statistically significant difference between A. Californica and J. Coenia, but no statistically significant difference between A Californica and L. Weidemeyerii.     
+2.  There is no statistically significant difference between L. Lorquini and either of the control butterflies     
+3.  There is no statistically significant difference between the two controls     
+
+
+```{r}
+california$X <- NULL
+california$cal <- 1
+idaho$cal <- 0
+both.states <- rbind(california, idaho)
+
+b.zip.w <- zeroinfl(Attacked~cal*(A+L+W) | 1, data = both.states, dist = c("poisson"), link = c("logit"))
+summary(b.zip.w)
+
+b.zip.l <- zeroinfl(Attacked~cal*(A+L+J) | 1, data = both.states, dist = c("poisson"), link = c("logit"))
+summary(b.zip.l)
+
+b.zip.j <- zeroinfl(Attacked~cal*(L+W+J) | 1, data = both.states, dist = c("poisson"), link = c("logit"))
+summary(b.zip.j)
+```
+
+Since none of the interaction terms between california and L. Lorquini are statistically significant, we do not see a difference in attack patters of the Batesian Mimic in Idaho compared to California. 
+
+
+
+
+## References
+
+Gelman and Hill. *Data Analysis Using Regression and Multilevel/Hierarchical Models*  Cambridge University Press, 2007. 
+
