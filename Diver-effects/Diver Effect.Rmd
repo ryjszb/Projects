@@ -1,0 +1,79 @@
+---
+title: "Diver Effect"
+author: "Jennifer Mo, Andrew Barton, Yue Ren, Jun Li"
+date: "December 13, 2016"
+output: pdf_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+Introduction: Rebecca Braconi is a marine biology Ph.D student studying the effects of the diver on the subject of study such as different species of marine life. She's looking at different types behavior such as agressive and social behaviors among fish as well as different coral groups. 
+
+Issue/Problem: The linear mixed effect model was not converging to zero. 
+
+Solution: To rectify this issue, we transformed the data with a log transformation on the coral size data which solved this issue. The working model is at the end of this document
+
+```{r cars}
+library(lme4)
+# read.data
+mydata <- read.csv("DIVER EFFECT, CORAL S&S, GROUP S.csv", header=TRUE, sep = ";")
+```
+
+Here we are creating subsets of the data and transforming the data for coral size: 
+
+```{r}
+subdata               <- mydata[mydata$TOT..AGGRESSIVE.B.<=40, ]
+subsubdata            <- subdata[,c(2, 3, 4, 5, 6)]
+subdata$treat_effect  <- factor(as.integer(subdata$TREATMENT),labels=c("B1","B2"))
+subdata$coral_size    <- scale(subdata$CORAL.SIZE ,center=TRUE)
+subdata$group_size    <- scale(subdata$GROUP.SIZE ,center=TRUE)
+subdata$log_coral_size   <- log(subdata$CORAL.SIZE)
+subdata$log_coral_size_c <- scale(subdata$log_coral_size,center=TRUE)
+
+```
+
+Looking at the design matrix:
+
+```{r}
+glm_model<-glm(TOT..AGGRESSIVE.B.~ treat_effect + CORAL.SPECIES + coral_size + group_size + GROUP.ID, 
+               family= poisson (link= "log"), data = subdata)
+car::vif(glm_model)
+glm_model_2<-glm(TOT..AGGRESSIVE.B.~  treat_effect + CORAL.SPECIES + group_size + 
+                   log_coral_size_c + GROUP.ID, 
+                 family= poisson (link= "log"), data = subdata)
+car::vif(glm_model_2)
+```
+
+This was the original model. The code that does not converge. 
+
+```{r}
+glmer_model<- glmer(TOT..AGGRESSIVE.B.~  treat_effect + CORAL.SPECIES + coral_size + 
+                      group_size + (1|GROUP.ID), 
+                    family= poisson (link= "log"), data = subdata)
+```
+
+Our Approach: We started by looking at confounding variables. Confounding variables are extraneous variables in a model that have negative or positive correlation with both, the dependent and independent variables. As we proceeded to fit the model multiple times with different variables within the original regression, it looked like the variable "coral_size" was the issue because the model would run without this variable. 
+
+```{r}
+glmer_model<- glmer(TOT..AGGRESSIVE.B.~  treat_effect +  (1|GROUP.ID), 
+                    family= poisson (link= "log"), data = subdata)
+glmer_model<- glmer(TOT..AGGRESSIVE.B.~  treat_effect + CORAL.SPECIES + (1|GROUP.ID), 
+                    family= poisson (link= "log"), data = subdata)
+glmer_model<- glmer(TOT..AGGRESSIVE.B.~  treat_effect + CORAL.SPECIES + 
+                      group_size + (1|GROUP.ID), 
+                    family= poisson (link= "log"), data = subdata)
+glmer_model<- glmer(TOT..AGGRESSIVE.B.~  treat_effect + CORAL.SPECIES + group_size + 
+                      coral_size + (1|GROUP.ID), 
+                    family= poisson (link= "log"), data = subdata)
+```
+
+Solution: 
+```{r}
+glmer_model<- glmer(TOT..AGGRESSIVE.B.~  treat_effect + CORAL.SPECIES + group_size + 
+                      log_coral_size_c + (1|GROUP.ID), 
+                    family= poisson (link= "log"), data = subdata)
+```
+
+The model is now able to converge with a log transformation on the original variable "coral_size". 

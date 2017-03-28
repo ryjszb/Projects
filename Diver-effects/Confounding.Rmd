@@ -1,0 +1,79 @@
+---
+title: "Checking for Confounding"
+author: "Andy Barton"
+date: "October 16, 2016"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+library(ggplot2)
+```
+
+```{r, include=FALSE}
+mydata <- read.csv("C:/Users/barto/Dropbox/4_Rebecca_project/DIVER EFFECT, CORAL S&S, GROUP S.csv", header=TRUE, sep = ";")
+```
+
+## Looking at tables
+
+```{r}
+table(mydata$GROUP.ID)
+
+table(mydata$CORAL.SPECIES)
+table(mydata$CORAL.SIZE)
+
+table(mydata$GROUP.SIZE)
+
+```
+
+20 unique group ids, 1-24 skipping 12 15 19 21, each has treatment B1 and B2.
+
+Coral species and size are consistent within group ids, group size is not.
+
+## Including Plots
+
+You can also embed plots, for example:
+
+```{r}
+ggplot(mydata) + aes(x = CORAL.SPECIES, y = CORAL.SIZE) + geom_boxplot() + 
+  theme(axis.text.x = element_text(angle = 30, hjust = 1)) + 
+  labs(x = "Coral Species", y = "Coral Size")
+```
+
+```{r}
+ggplot(mydata) + aes(x = CORAL.SPECIES, y = TOT..AGGRESSIVE.B.) + geom_boxplot() + 
+  theme(axis.text.x = element_text(angle = 30, hjust = 1)) + 
+  labs(x = "Coral Species", y = "Aggressiveness")
+```
+
+The patterns of coral size by species do not seem to follow the same patterns as aggressiveness by coral species.
+
+```{r}
+ggplot(mydata) + aes(x = CORAL.SPECIES, y = GROUP.SIZE) + geom_boxplot() + 
+  theme(axis.text.x = element_text(angle = 30, hjust = 1)) + 
+  labs(x = "Coral Species", y = "Group Size")
+```
+
+The patterns of group size by coral species is somewhat similar to the pattern of attacks by coral species.
+
+```{r}
+ggplot(mydata) + aes(x = CORAL.SIZE, y = GROUP.SIZE) + geom_point()
+cat("Correlation: ", cor(mydata$GROUP.SIZE, mydata$CORAL.SIZE))
+```
+
+There appears to be no correlation between coral size and group size from the plot, and the correlation coefficient is calculated to be very small.
+
+```{r}
+ggplot(mydata) + aes(x = TREATMENT, y = GROUP.SIZE) + geom_boxplot() + 
+  theme(axis.text.x = element_text(angle = 30, hjust = 1)) + 
+  labs(x = "Treatment", y = "Group Size")
+```
+
+```{r}
+ggplot(mydata) + aes(x = TREATMENT, y = TOT..AGGRESSIVE.B.) + geom_boxplot() + 
+  theme(axis.text.x = element_text(angle = 30, hjust = 1)) + 
+  labs(x = "Treatment", y = "Aggresiveness")
+```
+
+The pattern between treatment and group size seems fairly similar to the pattern between treatment and aggressiveness. Between this and the pattern with coral species is enough to try dropping group size from the regression. When I tried this, the regression still would not run. 
+
