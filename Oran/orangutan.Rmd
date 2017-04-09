@@ -1,0 +1,183 @@
+---
+title: "Orangutan Report"
+author: "Bo Zhang|Jingrong Cheng|Yue Ren"
+date: "April 5, 2017"
+output: pdf_document
+---
+
+##i.	Introduction
+
+	Our client Caitlin from Department of Anthropology is interested in the social stress in wild orangutans using self-behaviors as an indicator of stress level. Self-directed behaviors (SDBs) include yawning, scratching, and self-grooming, which are a commonly cited behavioral indicator of social anxiety in primates.  In this study, she aims to determine if socializing elicits anxiety for orangutans.  	The team is helping her with:
+1.	Create a model based on the observation data
+2.	Visualize and interpret the model results and target on adolescent female orangutans 
+
+##ii.	Materials and Methods
+
+	Our clients observed 33 individual samples including 8 adolescent females, 12 adult females,7 flanged males and 6 unflanged males for a year. They recorded their 10-minute SDB rate as dependent variables. To identify the factors that affect orangutan’s social stress, they took their agesex (4 levels: adolescent females, adult females, flanged males and unflanged males), their social partners into consideration. The data is as following:
+
+```{r}
+SDB <- read.csv("~/Desktop/2017 Spring/Projects/orangutans/SDB.csv")
+head(SDB)
+```
+  Based on the variables that the client wanted to look into, we produced the mixed effect model with random effect of different orangutans and fixed effect of other factors. To be noticed, we subtracted some interaction as required by client. Here is the summary of the model:
+```{r,warning=FALSE,message=FALSE}
+#Fit model
+library(lme4)
+data1 <- subset(SDB,select=c(1,2,3,5,6,18,19,20,21))
+colnames(data1) <- c("rate","id","agesex","eid","social","yf","of","fm","ufm")
+m <- glmer(rate*10 ~ agesex+(agesex*social*(yf+of+fm+ufm))-agesex:of-agesex:social-agesex:yf-agesex:fm-agesex:ufm-yf-of-fm-ufm+(1|id),data = data1,family="poisson")
+summary(m)
+```
+  The model was hard to interpret directly since abundant variables and interactions. Thus, we predicted SDB rate under all possible conditions and produced various plots to answer client’s questions more directly.
+  
+```{r,warning=FALSE,message=FALSE}
+library(ggplot2)
+#Create the complete grid to predict all combinations
+predAdolF <- expand.grid(agesex="Adol Female",id=unique(data1[data1$agesex=="Adol Female",]$id), social=c("N", "Y"),yf=c("N", "Y"), of=c("N", "Y"),fm=c("N", "Y"),ufm=c("N","Y"))
+
+predAdulF <- expand.grid(agesex="Adult Female",id=unique(data1[data1$agesex=="Adult Female",]$id), social=c("N", "Y"),yf=c("N", "Y"), of=c("N", "Y"),fm=c("N", "Y"),ufm=c("N","Y"))
+
+predFlang <- expand.grid(agesex="Flanged",id=unique(data1[data1$agesex=="Flanged",]$id), social=c("N", "Y"),yf=c("N", "Y"), of=c("N", "Y"),fm=c("N", "Y"),ufm=c("N","Y"))
+
+predUFlang <- expand.grid(agesex="Unflanged",id=unique(data1[data1$agesex=="Unflanged",]$id), social=c("N", "Y"),yf=c("N", "Y"), of=c("N", "Y"),fm=c("N", "Y"),ufm=c("N","Y"))
+
+pred <- rbind(predAdolF,predAdulF,predFlang,predUFlang)
+
+pred$rate<-predict(m,newdata=pred,type="response")/10
+```
+###Q1: Is that true that adolescent females are more likely to be stressful than other classes of orangutans? 
+```{r}
+#Young Female more easy to get social stress
+young_female <- ggplot(data=pred,aes(x=agesex,y=rate,fill=agesex))
+young_female+geom_boxplot()
+young_female + geom_violin(trim = FALSE) + 
+  stat_summary(fun.data="mean_sdl",  fun.args = list(mult=1), 
+               geom="pointrange", color = "black")+geom_jitter(alpha=0.05)
+
+```
+Answer: We can tell a higher possibility for adolescent female to get social stress than other classes.
+
+###Q2: Is being social causing high SDB rate?
+```{r}
+social <- ggplot(data=pred,aes(x=agesex,y=rate,fill=social,color=agesex))
+social+geom_boxplot(alpha=0.4)
+```
+Answer: The effect of being social is different for four classes of orangutans. For instance, being social will cause higher SDB rate for adolescent female while the behaviors will decrease the rate slightly for adult female.
+
+###Q3: To focus on adolescent female, is their stress level depending on the class of their social partners?
+```{r}
+library(reshape)
+fitted <- fitted(m)
+data.fitted <- data.frame(data1,fitted/10)
+data.fitted2 <- data.fitted[,-1]
+fitted_mean <-aggregate(fitted.10~.,mean,data=data.fitted2)
+
+social_data <- subset(fitted_mean,social== "Y" & agesex == "Adol Female")
+social_melt <- melt(social_data,id=c("id","agesex","eid","social","fitted.10"))
+social_melt$social_part <- factor(paste0(as.character(social_melt$variable),as.character(social_melt$value)))
+social_partner <- ggplot(social_melt,aes(x=variable,y=fitted.10,fill=value))
+social_partner+geom_boxplot()
+
+
+```
+For those social adolescent females, different class of partners have different effect on their stress level. For instance, when they play with adult females and flanged males, they suffer higher social stress.
+
+###Q4: Is their social partners being another adolescent female affecting the young females’ social stress?
+```{r}
+datpredict<- expand.grid(agesex="Adol Female",id=unique(data1[data1$agesex=="Adol Female",]$id), social=c("N", "Y"),yf=c("N", "Y"), of=c("N", "Y"),fm=c("N", "Y"),ufm=c("N","Y"))
+
+predy<-predict(m,newdata=datpredict,type="response")
+a=predy[datpredict$yf=="Y"&datpredict$social=="Y"]
+b=predy[datpredict$yf=="N"&datpredict$social=="Y"]
+boxplot(a,b,col=c("gold"),names=c("Present", "Not Present"))
+```
+To be specific on those play with adolescent female, they will have lower scratch rate in general.
+
+After the analysis on scratch rate, the client wanted to look into another dependent variable cortisol, which also worked as an indicator of orangutan's social stress. We reproduced the model with the new variable and answered the four questions from another perspective.
+```{r}
+cort <- read.csv("~/Desktop/2017 Spring/Projects/orangutans/Cortisol Data 3.27.csv")
+data1<-cort[,3:13]
+colnames(data1)<-c("id","agesex","yf","of","fm","ufm","social","cortisol","cortisolln","cortisollog", "Kcalextrapolated")
+data1[which(data1$id == "Shea"),2]<-"Adol Female"
+class(data1$Kcalextrapolated)
+data1$Kcalextrapolated<-as.numeric(data1$Kcalextrapolated)
+data1 <- as.data.frame(unclass(data1))
+data1 <- data1[!is.na(data1$Kcalextrapolated),]
+data1$social <- factor(data1$social)
+
+m1 <- lmer(sqrt(cortisol) ~ agesex+Kcalextrapolated+(agesex*social*(yf+of+fm+ufm))-agesex:of-agesex:social-agesex:yf-agesex:fm-agesex:ufm-yf-of-fm-ufm+(1|id),data = data1)
+
+print(summary(m1))
+plot(fitted(m1), resid(m1))
+```
+The residual plot was acceptable. Thus we visualize the coefficient to explain the results.
+```{r}
+library(coefplot) 
+library(lme4)
+library(Matrix)
+
+```
+
+###Q1: Is that true that adolescent females are more likely to be stressful than other classes of orangutans?
+```{r}
+predAdolF <- expand.grid(agesex="Adol Female",id=unique(data1[data1$agesex=="Adol Female",]$id), social=c("0", "1"),yf=c("N", "Y"), of=c("N", "Y"),fm=c("N", "Y"),ufm=c("N","Y"), Kcalextrapolated=3000)
+
+predAdulF <- expand.grid(agesex="Adult Female",id=unique(data1[data1$agesex=="Adult Female",]$id), social=c("0", "1"),yf=c("N", "Y"), of=c("N", "Y"),fm=c("N", "Y"),ufm=c("N","Y"), Kcalextrapolated=3000)
+
+predFlang <- expand.grid(agesex="Flanged Male",id=unique(data1[data1$agesex=="Flanged Male",]$id), social=c("0", "1"),yf=c("N", "Y"), of=c("N", "Y"),fm=c("N", "Y"),ufm=c("N","Y"), Kcalextrapolated=3000)
+
+predUFlang <- expand.grid(agesex="Unflanged Male",id=unique(data1[data1$agesex=="Unflanged Male",]$id), social=c("0", "1"),yf=c("N", "Y"), of=c("N", "Y"),fm=c("N", "Y"),ufm=c("N","Y"), Kcalextrapolated=3000)
+
+pred <- rbind(predAdolF,predAdulF,predFlang,predUFlang)
+
+pred$cortisol<-predict(m1,newdata=pred,type="response")^2
+
+#Young Female more easy to get social stress
+young_female <- ggplot(data=pred,aes(x=agesex,y=cortisol,fill=agesex))
+young_female+geom_boxplot()
+
+```
+Answer: The plot indicated that adult female orangutan had higher social stress overall.
+
+###Q2: Is being social causing high SDB rate?
+```{r}
+social <- ggplot(data=pred,aes(x=agesex,y=cortisol,fill=social,color=agesex))
+social+geom_boxplot(alpha=0.4)
+```
+Answer: For adol female, adult female and unflanged male, playing with a partner will cause higher cortisol. 
+
+###Q3: To focus on adolescent female, is their stress level depending on the class of their social partners?
+```{r}
+library(reshape)
+fitted <- fitted(m1)
+data.fitted <- data.frame(data1,fitted^2)
+data.fitted2 <- data.fitted[-8:-11]
+fitted_mean <-aggregate(fitted.2~.,mean,data=data.fitted2)
+social_data <- subset(fitted_mean,social== 1 & agesex == "Adol Female")
+social_melt <- melt(social_data,id=c("id","agesex","social","fitted.2"))
+social_melt$social_part <- factor(paste0(as.character(social_melt$variable),as.character(social_melt$value)))
+social_partner <- ggplot(social_melt,aes(x=variable,y=fitted.2,fill=value))
+social_partner+geom_boxplot()
+```
+
+Answer: The result seems that old female and unflanged male present will higher the level of stress for young female. 
+
+###Q4: Is their social partners being another adolescent female affecting the young females’ social stress?
+```{r}
+datpredict<- expand.grid(agesex="Adol Female",id=unique(data1[data1$agesex=="Adol Female",]$id), social=c("0", "1"),yf=c("N", "Y"), of=c("N", "Y"),fm=c("N", "Y"),ufm=c("N","Y"), Kcalextrapolated=3000)
+
+predy<-predict(m1,newdata=datpredict,type="response")^2
+
+#Adol Female social with whether play with yf
+a=predy[datpredict$yf=="Y"&datpredict$social==1]
+b=predy[datpredict$yf=="N"&datpredict$social==1]
+boxplot(a,b,col=c("gold"),names=c("Present", "Not Present"))
+
+```
+
+Answer: The result agreed with the former model that socializing with young female will make the young female suffer higher cortisol.
+
+##iii. Conclusion
+
+In general, adolescent females have higher scratch rate while adult females have high cortisol. The factor whether being social has different effect on the four types of orangutan. To focus on adolescent females, we found that when they play with other adolescent females, they will get more socially stressed out.
+This stage of analysis provided materials for client's summary and inital report. We will further analyze the factors that affect orangutans' social stress if needed.
