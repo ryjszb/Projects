@@ -1,0 +1,124 @@
+---
+title: "Children teaching project"
+author: "Jingrong Cheng, Bo Zhang, Yue Ren, Matthew Morse"
+date: "4/6/2017"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = T,warning = F,message = F)
+```
+
+```{r,echo=FALSE}
+library(arm)
+library(nnet)
+```
+
+## Overview
+
+####In this project, our client Yixin Cui from School of Education is interested in the ability of children to teach others. Our client came to our consulting service sought advice on mediation regressions, in regards to its performance and interpretation. After fitting and checking the mediation regression with given data, we concluded that mediation regression may not be a proper approach. Therefore, we switched to the multinomial logistic model and constructed probability tables, which better depicted the relationships between response variable and independent variables.
+
+## Data and primary analysis
+#### The original dataset we received has 101 observations and 117 variables. Since this is just part of her research, we only selected three variables: the variable "False belief" as the predictor, the variable "Precise Teaching" as the response variable, and the variable "Indirect Knowlege Attribution" as the mediator. The client wanted to know if children's false belief will contribute to their knowledge or lead to affect the children's teaching ability first and then their knowledge.  
+
+#### Since our client wanted us to help her perform the mediation regression using the specific columns of the data without the deep understanding of the whole experiment, we confirmed the data was well-structured and fitted the mediation regression model. 
+
+#### We combined the columns of interest into a new data set as the following: 
+
+```{r,echo=FALSE}
+library(mediation)
+library(readr)
+selec <- Selective_teaching_and_learning_study_1_28 <- read_csv("F:/676consulting/676consulting/children teaching/Selective teaching and learning study_1.28.csv")
+x <- selec$FALSEBELIEF # Independent variable is false-belief
+m <- selec$Indirect_Knowledge_attribution # the mediator is the "indirect knowledge attribution"
+y <- selec$arcsine_uniqeteach_proportion # dependent variables
+y0 <- selec$contrast_total
+new <- cbind(y,x,m,y0)
+colnames(new)<- c('Dependent','Independent','Mediator','Another_dep')
+head(new)
+```
+
+  
+#### Mediation analysis needs three precedures:
+  
+#### * Regress dependent variable(Y) on independent variable(X).  
+#### * Regress mediator(M) on independent variable(X).
+#### * Regress dependent variable(Y) on indenpendent varibale(X) and mediator(M).  
+
+#### We check if X affect Y first. If there is no relationship between them, there is nothing to mediate. Then, we want X to affect M. If the Independent and the mediator have no relationship, mediator is just a third variable that may or may not be associated with the Y. In the last step, if a mediation effect exists, the effect of X on Y will disappear or in a smaller magnitude. If the effect of X on Y completely disappears, M fully mediates between X and Y (full mediation). If the effect of X on Y still exists, but in a smaller magnitude, M partially mediates between X and Y (partial mediation).
+
+## Results and plots
+
+#### 1.	Regress ¡°Children¡¯s Precise Method of Teaching¡± (Y) on ¡°False Belief¡± (X).
+```{r}
+model.0 <- lm(y ~ x, selec)
+summary(model.0)
+```
+
+#### 2.	Regress ¡°Indirect Knowledge Attribute¡± (M) on ¡°False Belief¡± (X)
+```{r}
+model.1 <- lm(m ~ x,selec)
+summary(model.1)
+```
+
+#### 3.	Regress ¡°Children¡¯s Precise Method of Teaching¡± (Y) on ¡°False Belief¡± (x) and ¡°Indirect Knowledge Attribute¡± (M).
+```{r}
+model.2 <- lm(y ~ x + m,selec)
+summary(model.2)
+```
+
+
+```{r}
+results <- mediate(model.1, model.2, treat='x', mediator='m',
+                   boot=TRUE, sims=500)
+summary(results)
+```
+#### The result was not desirable because the mediation effect (ACME) showed merely partial mediation.  
+
+#### ACME = 0.116693, not significant!
+#### ACME stands for Average Causal Mediation Effects
+#### ADE stands for Average Direct Effects
+#### Total Effect is a sum of a mediation (indirect) effect and a direct effect  
+
+#### Note that the Total Effect in the summary (0.589) is the coefficient of X in the first step: a total effect of X on Y (without M). The direct effect (ADE, 0.472675) is still the coefficient of X in the third step: a direct effect of X on Y after taking into account a mediation (indirect) effect of M. Finally, the mediation effect (ACME) is the total effect minus the direct effect (0.589 - 0.472675 = 0.116693), which equals to a product of a coefficient of X in the second step and a coefficient of M in the last step. Here the ACME is too low (typicall we expect ACME > 30%), so we cannot say M mediates between X and Y.  
+
+#### After performing the analysis, we used binned residual plots to check our models. All the binned plots displayed certain patterns and here we use the following plot as an illustration.
+
+```{r}
+model.0 <- lm(y ~ x, selec)
+x_1 <- predict(model.0)
+y_1 <- resid(model.0)
+binnedplot(x_1,y_1)
+```
+
+## Multinomial logistic regression
+
+#### Since all the results indicated that mediation analysis was not applicable in this case, we took a deeper look at data and decided to perform multinomial logistic regression because the dependent variable can be seen as categorical and has more than two levels. After investigation, we found multinomial regression worked much better than mediation analysis and we further created the probability tables for the client.
+
+```{r,echo=F}
+new<-data.frame(new)
+```
+
+```{r}
+multin <- multinom(Dependent ~ factor(Independent),new)
+```
+
+
+#### Probability table
+```{r,echo=F}
+ind <- data.frame(new[,2])
+pre.pro<- data.frame(ind[c(1,4),])
+colnames(pre.pro)[1] <- "Independent"
+predicted.prob <- predict(multin,newdata=pre.pro,type="probs")
+predicted.prob <- as.data.frame(predicted.prob)
+pred.prob <- cbind(pre.pro,predicted.prob)
+pred.prob
+```
+
+#### We can see that the dependent variable has three levels: 0, 1.570796, 3.141593. The independent variable has two levels: 0 and 1. The table shows that if X is 0, then the probability for the Y is 0 is around 71%, for 1.5707 is 25% and for 3.141593 is 5%. 
+
+## Summary
+#### We have performed mediation regression, made multinomial logistic regression probabilty table along with the interpretations and solved the problems for the client. If our client wants to take look the relationships among other variables, we would love to make new appointment with her.
+
+
+
